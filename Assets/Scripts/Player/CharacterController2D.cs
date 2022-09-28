@@ -5,22 +5,23 @@ using UnityEngine.SceneManagement;
 
 public class CharacterController2D : MonoBehaviour
 {
-	[SerializeField] private float m_JumpForce = 400f;							// Amount of force added when the player jumps.
+	[SerializeField] private float m_JumpForce = 450f;							// Amount of force added when the player jumps.
 	[Range(0, .3f)] [SerializeField] private float m_MovementSmoothing = .05f;	// How much to smooth out the movement
 	[SerializeField] private bool m_AirControl = false;							// Whether or not a player can steer while jumping;
 	[SerializeField] private LayerMask m_WhatIsGround;							// A mask determining what is ground to the character
 	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
 	[SerializeField] private Transform m_WallCheck;								//Posicion que controla si el personaje toca una pared
 
-	const float k_GroundedRadius = 1.0f; // Radius of the overlap circle to determine if grounded
+	const float k_GroundedRadius = 0.3f; // Radius of the overlap circle to determine if grounded
 	private bool m_Grounded;            // Whether or not the player is grounded.
 	private Rigidbody2D m_Rigidbody2D;
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
 	private Vector3 velocity = Vector3.zero;
 	private float limitFallSpeed = 25f; // Limit fall speed
 
+	public int wallSlidingSpeed = 1;
 	public bool canDoubleJump = true; //If player can double jump
-	[SerializeField] private float m_DashForce = 25f;
+	[SerializeField] private float m_DashForce = 15f;
 	private bool canDash = true;
 	private bool isDashing = false; //If player is dashing
 	private bool m_IsWall = false; //If there is a wall in front of the player
@@ -61,7 +62,6 @@ public class CharacterController2D : MonoBehaviour
 		if (OnLandEvent == null)
 			OnLandEvent = new UnityEvent();
 	}
-
 
 	private void FixedUpdate()
 	{
@@ -150,7 +150,13 @@ public class CharacterController2D : MonoBehaviour
 				if (m_Rigidbody2D.velocity.y < -limitFallSpeed)
 					m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, -limitFallSpeed);
 				// Move the character by finding the target velocity
-				Vector3 targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
+				Vector3 targetVelocity = new Vector2(0f, 0f);
+				if (m_Grounded) {
+				targetVelocity = new Vector2(move * 10f, m_Rigidbody2D.velocity.y);
+				}
+				else {
+				targetVelocity = new Vector2(move * 13f, m_Rigidbody2D.velocity.y);
+				}
 				// And then smoothing it out and applying it to the character
 				m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref velocity, m_MovementSmoothing);
 
@@ -183,12 +189,11 @@ public class CharacterController2D : MonoBehaviour
 			{
 				canDoubleJump = false;
 				m_Rigidbody2D.velocity = new Vector2(m_Rigidbody2D.velocity.x, 0);
-				m_Rigidbody2D.AddForce(new Vector2(0f, m_JumpForce / 1.2f));
+				m_Rigidbody2D.AddForce(new Vector2(0f, m_JumpForce));
 				animator.SetBool("IsDoubleJumping", true);
 			}
-
 			else if (m_IsWall && !m_Grounded)
-			{
+			{	
 				if (!oldWallSlidding && m_Rigidbody2D.velocity.y < 0 || isDashing)
 				{
 					isWallSliding = true;
@@ -209,7 +214,7 @@ public class CharacterController2D : MonoBehaviour
 					else 
 					{
 						oldWallSlidding = true;
-						m_Rigidbody2D.velocity = new Vector2(-transform.localScale.x * 2, -5);
+						m_Rigidbody2D.velocity = new Vector2(-transform.localScale.x * 2, -wallSlidingSpeed);
 					}
 				}
 
@@ -218,7 +223,7 @@ public class CharacterController2D : MonoBehaviour
 					animator.SetBool("IsJumping", true);
 					animator.SetBool("JumpUp", true); 
 					m_Rigidbody2D.velocity = new Vector2(0f, 0f);
-					m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_JumpForce *1.2f, m_JumpForce));
+					m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_JumpForce, m_JumpForce));
 					jumpWallStartX = transform.position.x;
 					limitVelOnWallJump = true;
 					canDoubleJump = true;
@@ -340,4 +345,13 @@ public class CharacterController2D : MonoBehaviour
 		yield return new WaitForSeconds(1.1f);
 		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
 	}
+
+#if UNITY_EDITOR
+	private void OnDrawGizmos() {
+		Gizmos.DrawSphere(m_GroundCheck.position, k_GroundedRadius);
+		if (!m_Grounded){
+			Gizmos.DrawSphere(m_WallCheck.position, k_GroundedRadius);
+		}
+	}
+#endif // UNITY_EDITOR
 }
