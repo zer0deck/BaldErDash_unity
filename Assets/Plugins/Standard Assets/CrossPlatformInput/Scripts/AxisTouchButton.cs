@@ -64,7 +64,6 @@ namespace UnityStandardAssets.CrossPlatformInput
 			}
 			// update the axis and record that the button has been pressed this frame
 			m_Axis.Update(Mathf.MoveTowards(m_Axis.GetValue, axisValue, responseSpeed * Time.deltaTime));
-			Debug.Log("pressed left");
 		}
 
 
