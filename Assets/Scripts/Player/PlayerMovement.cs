@@ -6,7 +6,7 @@ using UnityStandardAssets.CrossPlatformInput;
 public class PlayerMovement : MonoBehaviour {
 
 	public CharacterController2D controller;
-	public Animator animator;
+	public Animator animator, L_animator, R_animator, Jump_ainimator;
 
 	public float runSpeed = 40f;
 
@@ -21,11 +21,28 @@ public class PlayerMovement : MonoBehaviour {
 
 		horizontalMove = CrossPlatformInputManager.GetAxis("Horizontal") * runSpeed;
 
+
 		animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
+
+		if (horizontalMove != 0) {
+			if (horizontalMove > 0) {
+				L_animator.SetBool("Pressed", false);
+				R_animator.SetBool("Pressed", true);
+			}
+			else {
+				L_animator.SetBool("Pressed", true);
+				R_animator.SetBool("Pressed", false);
+			}
+		}
+		else {
+			L_animator.SetBool("Pressed", false);
+			R_animator.SetBool("Pressed", false);
+		}
 
 		if (CrossPlatformInputManager.GetButtonDown("Jump"))
 		{
 			jump = true;
+			StartCoroutine(JumpCouroutine());
 		}
 
 		if (CrossPlatformInputManager.GetButtonDown("Dash"))
@@ -65,5 +82,12 @@ public class PlayerMovement : MonoBehaviour {
 		controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash);
 		jump = false;
 		dash = false;
+	}
+
+	private IEnumerator JumpCouroutine()
+	{
+		Jump_ainimator.SetBool("IsJumping", true);
+		yield return new WaitForSeconds(0.3f);
+		Jump_ainimator.SetBool("IsJumping", false);
 	}
 }
