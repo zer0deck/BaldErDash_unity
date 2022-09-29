@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -5,6 +6,12 @@ using UnityEngine.SceneManagement;
 
 public class ScenesManagement : MonoBehaviour
 {
+
+    public static ScenesManagement Instance
+    {
+        get;
+        private set;
+    }
 
     public GameObject PauseMenu, SettingsMenu;
 
@@ -24,6 +31,7 @@ public class ScenesManagement : MonoBehaviour
     }
 
 
+
     public void SettingsButtonPressed()
     {
         if (SettingsMenu.activeInHierarchy)
@@ -37,4 +45,37 @@ public class ScenesManagement : MonoBehaviour
             Time.timeScale = 0f;
         }
     }
+
+    public void RestartButtonPressed()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        Time.timeScale = 1f;
+    }
+
+    public void MainMenuButtonPressed()
+    {
+        SceneManager.LoadScene("MainMenu");
+        Time.timeScale = 1f;
+    }
+
+
+    public void LoadScene(string sceneName)
+    {
+        LoadSceneCoroutine(sceneName).Forget();
+    }
+
+    private async UniTask LoadSceneCoroutine(string sceneName)
+    {
+        Scene exitScene = SceneManager.GetActiveScene();
+        LoadSceneParameters param = new LoadSceneParameters(LoadSceneMode.Single);
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, param);
+        asyncLoad.allowSceneActivation = false;
+        while (!asyncLoad.isDone)
+        {
+            await UniTask.Yield();
+        }
+        asyncLoad.allowSceneActivation = true;
+        await SceneManager.UnloadSceneAsync(exitScene);
+    }
+
 }
