@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityStandardAssets.CrossPlatformInput;
+using UnityEngine.UI;
 
 public class Attack : MonoBehaviour
 {
+	[SerializeField] Image Attack_animator;
 	public float dmgValue = 4;
+	public float attackCooldown = 0.25f;
 	public GameObject throwableObject;
 	public Transform attackCheck;
 	private Rigidbody2D m_Rigidbody2D;
@@ -33,7 +36,8 @@ public class Attack : MonoBehaviour
 		{
 			canAttack = false;
 			animator.SetBool("IsAttacking", true);
-			StartCoroutine(AttackCooldown());
+			StartCoroutine(AttackCooldown(attackCooldown));
+			StartCoroutine(AttackAnimation(attackCooldown));
 		}
 
 		if (CrossPlatformInputManager.GetButtonDown("Shoot"))
@@ -45,10 +49,19 @@ public class Attack : MonoBehaviour
 		}
 	}
 
-	IEnumerator AttackCooldown()
+	IEnumerator AttackCooldown(float time)
 	{
-		yield return new WaitForSeconds(0.25f);
+		yield return new WaitForSeconds(time);
 		canAttack = true;
+	}
+	IEnumerator AttackAnimation(float time) {
+		float fulltime = time;
+		while (time > 0) {
+			Attack_animator.fillAmount = 1 - time/fulltime;
+			time -= 0.01f;
+			yield return new WaitForSeconds(0.01f);
+		}
+		Attack_animator.fillAmount = 1;
 	}
 
 	public void DoDashDamage()
