@@ -13,7 +13,6 @@ public class PlayerMovement : MonoBehaviour {
 	float horizontalMove = 0f;
 	bool jump = false;
 	bool dash = false;
-	bool climb = false;
 
 	//bool dashAxis = false;
 	
@@ -42,17 +41,8 @@ public class PlayerMovement : MonoBehaviour {
 
 		if (CrossPlatformInputManager.GetButtonDown("Jump"))
 		{
-			if (controller.m_onStair){
-				climb = true;
-			}
-			else{
-				jump = true;
-			}
-		}
-
-		if (CrossPlatformInputManager.GetButton("Jump") && controller.m_onStair)
-		{
-			climb = true;
+			jump = true;
+			StartCoroutine(JumpCouroutine());
 		}
 
 		if (CrossPlatformInputManager.GetButtonDown("Dash"))
@@ -89,10 +79,9 @@ public class PlayerMovement : MonoBehaviour {
 	void FixedUpdate ()
 	{
 		// Move our character
-		controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash, climb);
+		controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash);
 		jump = false;
 		dash = false;
-		climb = false;
 	}
 
 	private IEnumerator JumpCouroutine()
