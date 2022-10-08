@@ -135,7 +135,8 @@ public class ScenesManagement : MonoBehaviour
     }
     private async UniTask SavePlayerDataCoroutine() {
         Debug.Log("Saving player data");
-        await UniTask.DelayFrame(60);
+        DataSaver.instance.Save();
+        await UniTask.DelayFrame(1);
         Debug.Log("Player data saved");
         playerDataSaved = true;
         playerDataSaved = false;

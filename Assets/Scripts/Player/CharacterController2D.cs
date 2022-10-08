@@ -13,7 +13,7 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
 	[SerializeField] private Transform m_WallCheck;								//Posicion que controla si el personaje toca una pared
 	[SerializeField] private Image Dash_animator; //Animators of the UI
-
+	[SerializeField] private GameObject PlayerStats;
 
 	const float k_GroundedRadius = 0.3f; // Radius of the overlap circle to determine if grounded
 	private bool m_Grounded;            // Whether or not the player is grounded.
@@ -35,14 +35,17 @@ public class CharacterController2D : MonoBehaviour
 	private float prevVelocityX = 0f;
 	private bool canCheck = false; //For check if player is wallsliding
 
-	public float life = 10f; //Life of the player
+	public float MaxLife;
+	public float life; //Life of the player
 	public bool invincible = false; //If player can die
 	private bool canMove = true; //If player can move
 
 	private Animator animator;
+	private RectTransform hb, mb;
 	public ParticleSystem particleJumpUp; //Trail particles
 	public ParticleSystem particleJumpDown; //Explosion particles
 
+	private const float SHIFT = 232;
 	private float jumpWallStartX = 0;
 	private float jumpWallDistX = 0; //Distance between player and wall
 	private bool limitVelOnWallJump = false; //For limit wall jump distance with low fps
@@ -66,6 +69,10 @@ public class CharacterController2D : MonoBehaviour
 
 		if (OnLandEvent == null)
 			OnLandEvent = new UnityEvent();
+		
+		hb = PlayerStats.GetComponent<RectTransform>();
+		MaxLife = DataSaver.instance.state.MaxLife;
+		life =MaxLife;
 	}
 
 
@@ -266,6 +273,7 @@ public class CharacterController2D : MonoBehaviour
 
 	private void Flip()
 	{
+		// HealthSystem.instance.SetValue(0.5f*life/MaxLife);
 		// Switch the way the player is labelled as facing.
 		m_FacingRight = !m_FacingRight;
 
@@ -281,9 +289,11 @@ public class CharacterController2D : MonoBehaviour
 		{
 			animator.SetBool("Hit", true);
 			life -= damage;
+			// hb.offsetMax = new Vector2( - ( SHIFT * (life/MaxLife) ), hb.offsetMax [1] );
 			Vector2 damageDir = Vector3.Normalize(transform.position - position) * 40f ;
 			m_Rigidbody2D.velocity = Vector2.zero;
 			m_Rigidbody2D.AddForce(damageDir * 10);
+			HealthSystem.instance.SetValue(life/MaxLife);
 			if (life <= 0)
 			{
 				StartCoroutine(WaitToDead());
