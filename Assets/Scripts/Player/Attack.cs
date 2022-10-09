@@ -16,19 +16,19 @@ public class Attack : MonoBehaviour
 	public bool canAttack = true;
 	public bool isTimeToCheck = false;
 
+	public float Mana , MaxMana;
+
 	public GameObject cam;
 
 	private void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
+
+		MaxMana = DataSaver.instance.state.MaxMana;
+		Mana = MaxMana;
 	}
 
-	// Start is called before the first frame update
-	void Start()
-    {
-        
-    }
-
+	
     // Update is called once per frame
     void Update()
     {

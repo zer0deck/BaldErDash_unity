@@ -20,7 +20,7 @@ public class ManaSystem : MonoBehaviour
         Destroy(this.gameObject);
     }
 
-    private const float SHIFT = 232;
+    private const float SHIFT = 185;
     public void SetValue(float value)
     {
         if (value < 0) value = 0f;
