@@ -20,7 +20,7 @@ public class PlayerMovement : MonoBehaviour {
 	void Update () {
 
 		horizontalMove = CrossPlatformInputManager.GetAxis("Horizontal") * runSpeed;
-		horizontalMovePCDebug = 4*Input.GetAxis("Horizontal");
+		horizontalMovePCDebug = Input.GetAxis("Horizontal") * runSpeed;
 
 		if (horizontalMove != 0) {
 			animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
@@ -50,7 +50,7 @@ public class PlayerMovement : MonoBehaviour {
 			StartCoroutine(JumpCouroutine());
 		}
 
-		if (CrossPlatformInputManager.GetButtonDown("Dash"))
+		if (CrossPlatformInputManager.GetButtonDown("Dash") || Input.GetKeyDown(KeyCode.LeftShift))
 		{
 			dash = true;
 		}
