@@ -14,7 +14,7 @@ public class ManaSystem : MonoBehaviour
         bar = _linebar.GetComponent<RectTransform>();
         if (instance == null) {
             instance = this;
-            DontDestroyOnLoad(this.gameObject);
+            // DontDestroyOnLoad(this.gameObject);
             return;
         }
         Destroy(this.gameObject);

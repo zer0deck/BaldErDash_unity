@@ -71,10 +71,12 @@ public class CharacterController2D : MonoBehaviour
 			OnLandEvent = new UnityEvent();
 		
 		hb = PlayerStats.GetComponent<RectTransform>();
-		MaxLife = DataSaver.instance.state.MaxLife;
-		life =MaxLife;
 	}
 
+	private void Start() {
+		MaxLife = DataSaver.instance.state.MaxLife;
+		life = MaxLife;
+	}
 
 	private void FixedUpdate()
 	{

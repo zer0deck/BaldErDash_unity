@@ -24,10 +24,12 @@ public class Attack : MonoBehaviour
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
 
+	}
+
+	private void Start() {
 		MaxMana = DataSaver.instance.state.MaxMana;
 		Mana = MaxMana;
 	}
-
 	
     // Update is called once per frame
     void Update()
