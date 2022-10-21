@@ -375,7 +375,7 @@ public class CharacterController2D : MonoBehaviour
 		await UniTask.Delay(System.TimeSpan.FromSeconds(0.4f));
 		m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
 		await UniTask.Delay(System.TimeSpan.FromSeconds(1.1f));
-		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
+		await SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
 	}
 
 #if UNITY_EDITOR
