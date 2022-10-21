@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -47,7 +48,7 @@ public class PlayerMovement : MonoBehaviour {
 		if (CrossPlatformInputManager.GetButtonDown("Jump") || Input.GetButtonDown("Jump"))
 		{
 			jump = true;
-			StartCoroutine(JumpCouroutine());
+			JumpCouroutine().Forget();
 		}
 
 		if (CrossPlatformInputManager.GetButtonDown("Dash") || Input.GetKeyDown(KeyCode.LeftShift))
@@ -96,10 +97,11 @@ public class PlayerMovement : MonoBehaviour {
 		dash = false;
 	}
 
-	private IEnumerator JumpCouroutine()
+
+	private async UniTask JumpCouroutine()
 	{
 		Jump_ainimator.SetBool("IsJumping", true);
-		yield return new WaitForSeconds(0.3f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.3f));
 		Jump_ainimator.SetBool("IsJumping", false);
 	}
 }

@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
@@ -152,8 +153,8 @@ public class CharacterController2D : MonoBehaviour
 			if (dash && canDash && !isWallSliding)
 			{
 				//m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_DashForce, 0f));
-				StartCoroutine(DashCooldown(dashCooldown));
-				StartCoroutine(DashAnimation(dashCooldown));
+				DashCooldown(dashCooldown).Forget();
+				DashAnimation(dashCooldown).Forget();
 			}
 			// If crouching, check to see if the character can stand up
 			if (isDashing)
@@ -216,7 +217,7 @@ public class CharacterController2D : MonoBehaviour
 					isWallSliding = true;
 					m_WallCheck.localPosition = new Vector3(-m_WallCheck.localPosition.x, m_WallCheck.localPosition.y, 0);
 					Flip();
-					StartCoroutine(WaitToCheck(0.1f));
+					WaitToCheck(0.1f).Forget();
 					canDoubleJump = true;
 					animator.SetBool("IsWallSliding", true);
 				}
@@ -226,7 +227,7 @@ public class CharacterController2D : MonoBehaviour
 				{
 					if (move * transform.localScale.x > 0.1f)
 					{
-						StartCoroutine(WaitToEndSliding());
+						WaitToEndSliding().Forget();
 					}
 					else 
 					{
@@ -257,8 +258,8 @@ public class CharacterController2D : MonoBehaviour
 					oldWallSlidding = false;
 					m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
 					canDoubleJump = true;
-					StartCoroutine(DashCooldown(dashCooldown));
-					StartCoroutine(DashAnimation(dashCooldown));
+					DashCooldown(dashCooldown).Forget();
+					DashAnimation(dashCooldown).Forget();
 				}
 			}
 			else if (isWallSliding && !m_IsWall && canCheck) 
@@ -298,66 +299,66 @@ public class CharacterController2D : MonoBehaviour
 			HealthSystem.instance.SetValue(life/MaxLife);
 			if (life <= 0)
 			{
-				StartCoroutine(WaitToDead());
+				WaitToDead().Forget();
 			}
 			else
 			{
-				StartCoroutine(Stun(0.25f));
-				StartCoroutine(MakeInvincible(1f));
+				Stun(0.25f).Forget();
+				MakeInvincible(1f).Forget();
 			}
 		}
 	}
 
-	IEnumerator DashCooldown(float time)
+	private async UniTask DashCooldown(float time)
 	{
 		animator.SetBool("IsDashing", true);
 		isDashing = true;
 		canDash = false;
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		isDashing = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canDash = true;
 	}
 
-	IEnumerator DashAnimation(float time) {
+	private async UniTask DashAnimation(float time) {
 		float fulltime = time;
 		while (time > 0) {
 			Dash_animator.fillAmount = 1 - time/fulltime;
 			time -= 0.01f;
-			yield return new WaitForSeconds(0.01f);
+			await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		}
 		Dash_animator.fillAmount = 1;
 	}
 
-	IEnumerator Stun(float time) 
+	private async UniTask Stun(float time) 
 	{
 		canMove = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canMove = true;
 	}
-	IEnumerator MakeInvincible(float time) 
+	private async UniTask MakeInvincible(float time) 
 	{
 		invincible = true;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		invincible = false;
 	}
-	IEnumerator WaitToMove(float time)
+	private async UniTask WaitToMove(float time)
 	{
 		canMove = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canMove = true;
 	}
 
-	IEnumerator WaitToCheck(float time)
+	private async UniTask WaitToCheck(float time)
 	{
 		canCheck = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canCheck = true;
 	}
 
-	IEnumerator WaitToEndSliding()
+	private async UniTask WaitToEndSliding()
 	{
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		canDoubleJump = true;
 		isWallSliding = false;
 		animator.SetBool("IsWallSliding", false);
@@ -365,15 +366,15 @@ public class CharacterController2D : MonoBehaviour
 		m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
 	}
 
-	IEnumerator WaitToDead()
+	private async UniTask WaitToDead()
 	{
 		animator.SetBool("IsDead", true);
 		canMove = false;
 		invincible = true;
 		GetComponent<Attack>().enabled = false;
-		yield return new WaitForSeconds(0.4f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.4f));
 		m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
-		yield return new WaitForSeconds(1.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(1.1f));
 		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
 	}
 
