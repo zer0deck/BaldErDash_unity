@@ -38,8 +38,6 @@ public class GameSettings : MonoBehaviour
             inx++;
         }
         langText.text = DataSaver.instance.state.lang;
-        Mixer.audioMixer.SetFloat("MusicVol", Mathf.Lerp(-80, 0, DataSaver.instance.state.musicVolume/10f));
-        Mixer.audioMixer.SetFloat("EffectsVol", Mathf.Lerp(-80, 0, DataSaver.instance.state.soundVolume/10f));
         
     }
 

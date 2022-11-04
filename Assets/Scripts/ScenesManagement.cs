@@ -15,9 +15,17 @@ public class ScenesManagement : MonoBehaviour
         get;
         private set;
     }
+    private void Awake() 
+    {
+        if (Instance == null) {
+            Instance = this;
+            // DontDestroyOnLoad(this.gameObject);
+            return;
+        }
 
-    public GameObject PauseMenu, Pause, Controls, PauseButton, Transitor;
-    private Button PB;
+        Destroy(this.gameObject);    
+    }
+
     private Animator transitionAnimator;
     public TextMeshProUGUI Loading_info;
     public Image Loading_bar;
@@ -26,38 +34,11 @@ public class ScenesManagement : MonoBehaviour
     // Legacy: SettingsMenu, CheckMenuOut, GameOverMenu;
 
     private void Start() {
-        PB = PauseButton.GetComponent<Button>();
-        transitionAnimator = Transitor.GetComponent<Animator>();
+        transitionAnimator = this.GetComponent<Animator>();
         LoadingBar_Rect = Loading_bar.GetComponent<RectTransform>();
         LoadingBar_Rect.offsetMax = new Vector2 (0,LoadingBar_Rect.offsetMax[1]);
         Loading_info.text = "Loading completed";
         transitionAnimator.SetTrigger("Break");
-    }
-    public void PauseButtonPressed()
-    {
-        if (PauseMenu.activeInHierarchy)
-        {
-            PB.interactable = true;
-            Controls.SetActive(true);
-            Pause.SetActive(false);
-            PauseMenu.SetActive(false); 
-            Time.timeScale = 1f;
-        }
-        else
-        {
-            PB.interactable = false;
-            Controls.SetActive(false);
-            Pause.SetActive(true);
-            PauseMenu.SetActive(true);
-            Time.timeScale = 0f;
-        }
-    }
-    public void ContinueButtonPressed()
-    {
-        PB.interactable = true;
-        Controls.SetActive(true);
-        Pause.SetActive(false);
-        Time.timeScale = 1f;
     }
 
     // Legacy
@@ -105,6 +86,7 @@ public class ScenesManagement : MonoBehaviour
         LoadingBar_Rect.offsetMax = new Vector2 (-1200,LoadingBar_Rect.offsetMax[1]);
         Loading_info.text = "Loading... 10%";
         transitionAnimator.SetTrigger("Use");
+        await UniTask.Delay(TimeSpan.FromSeconds(1), ignoreTimeScale: true);
         LoadSceneParameters param = new LoadSceneParameters(LoadSceneMode.Single);
         AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, param);
         asyncLoad.allowSceneActivation = false;
@@ -113,17 +95,19 @@ public class ScenesManagement : MonoBehaviour
         
         float right = 1200;
         do {
-            Loading_info.text = $"Loading... {asyncLoad.progress*100}%";
-            right = Mathf.Lerp(right, asyncLoad.progress, Time.deltaTime * 2);
+            right = (1- asyncLoad.progress)*right;
             LoadingBar_Rect.offsetMax = new Vector2 (-right,LoadingBar_Rect.offsetMax[1]);
+            Loading_info.text = $"Loading... {Convert.ToInt16(100-right/12)}%";
             await UniTask.Yield();
         } while (asyncLoad.progress < 0.89);
+        await UniTask.Delay(TimeSpan.FromSeconds(0.5f), ignoreTimeScale: true);
         LoadingBar_Rect.offsetMax = new Vector2 (0,LoadingBar_Rect.offsetMax[1]);
         Loading_info.text = "Loading completed";
-        await UniTask.Delay(TimeSpan.FromSeconds(1), ignoreTimeScale: true);
+        await UniTask.Delay(TimeSpan.FromSeconds(0.5f), ignoreTimeScale: true);
         // await UniTask.WaitUntil(() => transitionFinished==true);
         asyncLoad.allowSceneActivation = true;
-        await SceneManager.UnloadSceneAsync(exitScene);
+        // await SceneManager.UnloadSceneAsync(exitScene);
+        transitionAnimator.SetTrigger("Break");
     }
     public void Quit() {
         Application.Quit();
@@ -134,10 +118,8 @@ public class ScenesManagement : MonoBehaviour
         SavePlayerDataCoroutine().Forget();
     }
     private async UniTask SavePlayerDataCoroutine() {
-        Debug.Log("Saving player data");
         DataSaver.instance.Save();
         await UniTask.DelayFrame(1);
-        Debug.Log("Player data saved");
         playerDataSaved = true;
         playerDataSaved = false;
     }
