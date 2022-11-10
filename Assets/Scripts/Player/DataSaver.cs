@@ -28,6 +28,8 @@ public class DataSaver : MonoBehaviour
     {
         if (PlayerPrefs.HasKey("save"))
         {
+            // state = new SaveState();
+            // Save();
             state = decoder.decode<SaveState>(PlayerPrefs.GetString("save"));
         }
         else {

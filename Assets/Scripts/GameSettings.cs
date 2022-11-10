@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.Audio;
+using UnityEngine.Localization; 
+using UnityEngine.Localization.Settings;
 
 public class GameSettings : MonoBehaviour
 {
 
     public GameObject notificationsOn,notificationsOff;
     public GameObject[] musicDots, soundDots;
-    public TextMeshProUGUI langText;
     public AudioMixerGroup Mixer;
-    private List<string> langs = new List<string> {"English", "Русский", "中文", "Українська", "Deutch"};
     // Start is called before the first frame update
     private void Start()
     {
@@ -37,8 +37,7 @@ public class GameSettings : MonoBehaviour
             }
             inx++;
         }
-        langText.text = DataSaver.instance.state.lang;
-        
+
     }
 
     public void MakeSoundBigger() {
@@ -93,14 +92,25 @@ public class GameSettings : MonoBehaviour
 
     public void SwitchLanguage()
     {
-        if (DataSaver.instance.state.lang_inx < langs.Count-1) {
+        if (DataSaver.instance.state.lang_inx == -1) {
+            for (int i=0; i < 6; i++)
+            {
+                if (LocalizationSettings.SelectedLocale == LocalizationSettings.AvailableLocales.Locales[i])
+                {
+                    DataSaver.instance.state.lang_inx = i;
+                }    
+            }
+        }
+        
+        if (DataSaver.instance.state.lang_inx < LocalizationSettings.AvailableLocales.Locales.Count-1) {
             DataSaver.instance.state.lang_inx++;
         }
         else {
             DataSaver.instance.state.lang_inx = 0;
         }
-        DataSaver.instance.state.lang = langs[DataSaver.instance.state.lang_inx];
-        langText.text = DataSaver.instance.state.lang;
+        Locale aLocale = LocalizationSettings.AvailableLocales.Locales[DataSaver.instance.state.lang_inx];
+        LocalizationSettings.SelectedLocale = aLocale;
+        // Debug.Log(LocalizationSettings.SelectedLocale);
     }
 
 }

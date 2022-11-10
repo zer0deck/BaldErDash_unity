@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
 
 public class SnapScrolling : MonoBehaviour
 {
@@ -24,7 +25,7 @@ public class SnapScrolling : MonoBehaviour
     private RectTransform contentRect;
     private Vector2 contentVector;
     private int currentPanID;
-    private bool isScrolling;
+    private bool isScrolling, buttonClicked = false;
     private int tempPanID=0;
     private void Start() 
     {
@@ -44,26 +45,68 @@ public class SnapScrolling : MonoBehaviour
 
     private void FixedUpdate() 
     {
-        float nearestPos = float.MaxValue;
-        for (int i = 0; i<panCount; i++)
-        {
-            float distance = Mathf.Abs(contentRect.anchoredPosition.x - pansPos[i].x);
-            if (distance < nearestPos)
+        if (!buttonClicked) {
+            float nearestPos = float.MaxValue;
+            for (int i = 0; i<panCount; i++)
             {
-                nearestPos = distance;
-                currentPanID = i;
+                float distance = Mathf.Abs(contentRect.anchoredPosition.x - pansPos[i].x);
+                if (distance < nearestPos)
+                {
+                    nearestPos = distance;
+                    currentPanID = i;
+                }
             }
+            if (isScrolling) return;
+            contentVector.x = Mathf.SmoothStep(contentRect.anchoredPosition.x, pansPos[currentPanID].x, snapSpeed * Time.fixedDeltaTime);
+            contentRect.anchoredPosition = contentVector;
         }
-        if (isScrolling) return;
-        contentVector.x = Mathf.SmoothStep(contentRect.anchoredPosition.x, pansPos[currentPanID].x, snapSpeed * Time.fixedDeltaTime);
-        contentRect.anchoredPosition = contentVector;
     }
+
+    public void LeftClick()
+    {
+        if (!buttonClicked){
+            // buttonClicked = true;
+            // SwitchPage(-1).Forget();
+        }
+    }
+
+    public void RightClick()
+    {
+        if (!buttonClicked){
+            // buttonClicked = true;
+            // SwitchPage(1).Forget();
+        }
+    }
+
+    // private async UniTask SwitchPage(int i)
+    // {
+    //     currentPanID += i;
+    //     do 
+    //     {
+    //         contentVector.x = Mathf.SmoothStep(contentRect.anchoredPosition.x, pansPos[currentPanID].x, snapSpeed * Time.fixedDeltaTime);
+    //         contentRect.anchoredPosition = contentVector;
+    //     } while (contentVector.x != 0);
+    //     buttonClicked = false;
+    // }
 
     private void Update() 
     {
         if (tempPanID == currentPanID) return;
 
-        // if (currentPanID == 0) leftButton.SetActive(false);
+        if (currentPanID == 0) 
+        {
+            leftButton.SetActive(false);
+            rightButton.SetActive(true);
+        } else if (currentPanID == panCount-1) 
+        {
+            leftButton.SetActive(true);
+            rightButton.SetActive(false);
+        } else
+        {
+            leftButton.SetActive(true);
+            rightButton.SetActive(true);
+        }
+
 
         for (int i=0; i<panCount; i++)
         {

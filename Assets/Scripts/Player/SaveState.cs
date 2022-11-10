@@ -10,6 +10,5 @@ public class SaveState
     public int musicVolume = 7;
     public int soundVolume = 3;
     
-    public int lang_inx = 0;
-    public string lang = "English";
+    public int lang_inx = -1;
 }
