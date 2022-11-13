@@ -20,21 +20,12 @@ public class HealthSystem : MonoBehaviour
         Destroy(this.gameObject);
     }
 
-    private const float SHIFT = 232;
+    private const float SHIFT = -232;
     public void SetValue(float value)
     {
         if (value < 0) value = 0f;
         if (value > 1) value = 1;
-        StartCoroutine(ChangeHP(value));
+        bar.offsetMax = new Vector2( SHIFT * (1 - value), bar.offsetMax[1] );
     }
-    
-    IEnumerator ChangeHP(float value)
-    {
-        while (bar.offsetMax[0] > (- ( SHIFT * (1 - value) )))
-        {
-            bar.offsetMax = new Vector2( Mathf.Lerp(bar.offsetMax[0], - ( SHIFT * (1 - value) ), 3f*Time.deltaTime), bar.offsetMax[1] );
-            yield return new WaitForEndOfFrame();
-        }
 
-    }
 }

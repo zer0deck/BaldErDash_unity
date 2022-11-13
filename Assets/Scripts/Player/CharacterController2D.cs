@@ -309,6 +309,15 @@ public class CharacterController2D : MonoBehaviour
 		}
 	}
 
+	public void ApplyHeal(float heal)
+	{
+		// animator.SetBool("Heal", true);
+		life += heal;
+		if (life>MaxLife) life=MaxLife;
+		// Debug.Log($"Life: {life}, MaxLife: {MaxLife}");
+		HealthSystem.instance.SetValue(life/MaxLife);
+	}
+
 	private async UniTask DashCooldown(float time)
 	{
 		animator.SetBool("IsDashing", true);
