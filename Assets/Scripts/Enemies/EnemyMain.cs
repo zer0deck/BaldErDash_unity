@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using UnityEngine.AI;
+using Pathfinding;
 
 namespace Enemies {
 
@@ -16,14 +17,13 @@ namespace Enemies {
     /// </summary>
     public abstract class EnemyMain : MonoBehaviour, IMeleeAttack
     {
-        private Rigidbody2D m_Rigidbody2D;
+        public Rigidbody2D m_Rigidbody2D;
         private bool m_FacingRight = true;  // For determining which way the player is currently facing.
         public float life = 10;
         private bool facingRight = true;
-        public float speed = 5f; 
+        public float speed = 200f; 
         public bool isInvincible = false;
         private bool isHitted = false;
-
 
         public GameObject player;
         private float distToPlayer;
@@ -32,10 +32,11 @@ namespace Enemies {
         private bool canAttack = true;
         private Transform attackCheck;
         public float dmgValue = 4;
-        public float ditanceToSeePlayer = 1f;
+        public float ditanceToSeePlayer = 3f;
 
         public GameObject throwableObject;
 
+        private bool playerSeen = false;
         private float randomDecision = 0;
         private bool doOnceDecision = true;
         private bool endDecision = false;
@@ -43,7 +44,14 @@ namespace Enemies {
 
         private CharacterController2D playerScript;
 
-        private NavMeshAgent agent;
+        public float nextWaypointDistance = 3f;
+
+        public Path path;
+        public int currentWaypoint = 0;
+        public bool reachedEndOfPath = false;
+
+        public Vector3 movementPoint;
+        public Seeker seeker;
 
         IAttack defaultAttack = new DefaultEnemyAttack();
 
@@ -54,10 +62,23 @@ namespace Enemies {
         /// </summary>
         void Awake()
         {
-            m_Rigidbody2D = GetComponent<Rigidbody2D>();
+            m_Rigidbody2D = gameObject.GetComponent<Rigidbody2D>();
             attackCheck = transform.Find("AttackCheck").transform;
-            animator = GetComponent<Animator>();
-            agent = GetComponent<NavMeshAgent>();
+            animator = gameObject.GetComponent<Animator>();
+            seeker = gameObject.GetComponent<Seeker>();
+            movementPoint = gameObject.transform.position;
+        }
+        void Start() 
+        {
+            InvokeRepeating("UpdatePath", 0f, 2f);
+        }
+
+        void UpdatePath()
+        {     
+            if (seeker.IsDone())
+            {
+                seeker.StartPath(m_Rigidbody2D.position, movementPoint, OnPathComplete);
+            }                  
         }
 
         /// <summary>
@@ -78,9 +99,11 @@ namespace Enemies {
             if (!isHitted)
             {
                 // Если игрок в неком диапазоне, то производится расчет маршрута до него и Move()
-                distToPlayer = player.transform.position.x - transform.position.x;
+                distToPlayer = Mathf.Abs(player.transform.position.x - transform.position.x);
                 if (distToPlayer<ditanceToSeePlayer) 
                 {
+                    playerSeen = true;
+                    Debug.Log("player seen");
                     if (canAttack)
                     {
                         if (distToPlayer < meleeDist)
@@ -98,8 +121,7 @@ namespace Enemies {
                         };
                     }
                     else{
-                        
-                        MoveToGoal(player);
+                        movementPoint = player.transform.position;
                     }
 
                 }
@@ -107,10 +129,10 @@ namespace Enemies {
                     RandomBehaviour();
                 }
             }
-
+            MoveToGoal(player.transform);
             if ((transform.localScale.x * m_Rigidbody2D.velocity.x > 0 && !m_FacingRight) || (transform.localScale.x * m_Rigidbody2D.velocity.x < 0 && m_FacingRight))
             {
-                Flip();
+                // Flip();
             }      
         }
 
@@ -123,7 +145,7 @@ namespace Enemies {
         /// </summary>
         public void MeleeAttack(CharacterController2D pScript, float dmg)
         {
-            defaultAttack.Attack(this.gameObject, pScript, dmg);
+            defaultAttack.Attack(gameObject, pScript, dmg, attackCheck);
             WaitToAttack(0.5f).Forget();
         }
         public virtual void HardAttack(CharacterController2D pScript, float dmg)
@@ -132,18 +154,18 @@ namespace Enemies {
         }
         public virtual void SuperAttack()
         {
-            MoveToGoal(player);
+            MoveToGoal(player.transform);
         }
         public virtual void RangeAttack()
         {
-            MoveToGoal(player);
+            MoveToGoal(player.transform);
         }
         public void OtherAttacks()
         {
             if (!endDecision)
             {
                 if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-                    Flip();
+                    // Flip();
                 if (randomDecision <= 0.2f)
                     RangeAttack();
                     if (doOnceDecision)
@@ -153,13 +175,21 @@ namespace Enemies {
                     if (doOnceDecision)
                         NextDecision(0.5f).Forget();   
                 else
-                    MoveToGoal(player);
+                    MoveToGoal(player.transform);
                     if (doOnceDecision)
                         NextDecision(1f).Forget();
             }
         }
-        public abstract void MoveToGoal(GameObject player);
+        public abstract void MoveToGoal(Transform target);
 
+        public void OnPathComplete(Path p)
+        {
+            if (!p.error)
+            {
+                path = p;
+                currentWaypoint = 0;
+            }
+        }
         /// <summary>
         /// Метод RandomBehaviour() для случайного поведения, когда враг не видит игрока. движение с вероятностью 60%
         /// RandomMove() абстрактный, зависит от наследования IMovement
@@ -169,10 +199,14 @@ namespace Enemies {
             if (!endDecision)
             {
                 if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-                    Flip();
+                    // Flip();
 
                 if (randomDecision <= 0.6f)
-                    MoveToGoal(player);
+                    if (!playerSeen)
+                    {
+                        movementPoint = new Vector3(transform.position.x + UnityEngine.Random.Range(-3f, 3f), transform.position.y + UnityEngine.Random.Range(-3f, 3f), 1.0f);
+                    }
+                    MoveToGoal(player.transform);
                     if (doOnceDecision)
                         NextDecision(0.5f).Forget();
                 else
@@ -215,14 +249,14 @@ namespace Enemies {
                 NextDecision(1f).Forget();
             }
         }
-        void Flip()
-        {
-            facingRight = !facingRight;
+        // void Flip()
+        // {
+        //     facingRight = !facingRight;
 
-            Vector3 theScale = transform.localScale;
-            theScale.x *= -1;
-            transform.localScale = theScale;
-        }
+        //     Vector3 theScale = transform.localScale;
+        //     theScale.x *= -1;
+        //     transform.localScale = theScale;
+        // }
 
     
 
@@ -280,28 +314,28 @@ namespace Enemies {
 /// Interfaces
     interface IMovement
     {
-        void Move(Vector2 playerCoordinates);
+        void Move(Seeker seeker, Transform currentPos, Transform target);
     }
 
     interface IWalker
     {
-        void Walk(Vector2 playerCoordinates);
+        void Walk(Transform target);
     }
     interface IFlyer
     {
-        void Fly(Vector2 playerCoordinates);
+        void Fly(Transform target);
     }
 
     class WalkAction : IMovement
     {
-        public void Move(Vector2 playerCoordinates)
+        public void Move(Seeker seeker, Transform currentPos, Transform target)
         {
             Debug.Log("Walking");
         }
     }
     class FlyAction : IMovement
     {
-        public void Move(Vector2 playerCoordinates)
+        public void Move(Seeker seeker, Transform currentPos, Transform target)
         {
             Debug.Log("Flying");
         }
@@ -309,7 +343,7 @@ namespace Enemies {
 
     interface IAttack
     {
-        void Attack(GameObject enemy, CharacterController2D pScript, float dmg);
+        void Attack(GameObject enemy, CharacterController2D pScript, float dmg, Transform attackCheck);
     }
     
     interface IMeleeAttack
@@ -330,10 +364,11 @@ namespace Enemies {
         public void RangeAttack(GameObject player);
     }
 
+
+/// !!! Attackcheck
     class DefaultEnemyAttack : IAttack
     {
-        Transform attackCheck;
-        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg)
+        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg, Transform attackCheck)
         {
             enemy.transform.GetComponent<Animator>().SetBool("Attack", true);
             Collider2D[] collidersEnemies = Physics2D.OverlapCircleAll(attackCheck.position, 0.9f);
@@ -341,7 +376,7 @@ namespace Enemies {
             {
                 if (collidersEnemies[i].gameObject.tag == "Player")
                 {
-                    pScript.ApplyDamage(dmg, enemy.transform.position);
+                    // pScript.ApplyDamage(dmg, enemy.transform.position);
                 }
             }
         }
@@ -349,21 +384,21 @@ namespace Enemies {
     }
     class HardEnemyAttack : IAttack
     {
-        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg)
+        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg, Transform attackCheck)
         {
             Debug.Log("Hard Attack");
         }
     }
     class SuperEnemyAttack : IAttack
     {
-        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg)
+        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg, Transform attackCheck)
         {
             Debug.Log("Super Attack");
         }
     }
     class RangeEnemyAttack : IAttack
     {
-        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg)
+        public void Attack(GameObject enemy, CharacterController2D pScript, float dmg, Transform attackCheck)
         {
             Debug.Log("Range Attack");
         }

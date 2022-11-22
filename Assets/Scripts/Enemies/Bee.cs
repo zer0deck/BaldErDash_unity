@@ -2,23 +2,38 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Enemies;
+using Pathfinding;
 
-public class Bee : EnemyMain, IFlyer, IDefaultAttack, IHardAttack
+public class Bee : EnemyMain, IFlyer
 {
-    IMovement flyaction;
-    private Bee()
+
+    IMovement movement = new FlyAction();
+    public void Fly(Transform target)
     {
-        flyaction = new FlyAction();
+        if(currentWaypoint >= path.vectorPath.Count)
+        {
+            reachedEndOfPath = true;
+            return;
+        }
+        else{
+            reachedEndOfPath = false;
+        }
+
+        Vector2 direction = ((Vector2)path.vectorPath[currentWaypoint] - m_Rigidbody2D.position).normalized;
+        Vector2 force = direction * speed * Time.deltaTime;
+
+        m_Rigidbody2D.AddForce(force);
+        float distance = Vector2.Distance(m_Rigidbody2D.position, path.vectorPath[currentWaypoint]);
+
+        if (distance < nextWaypointDistance)
+        {
+            currentWaypoint++;
+        }
+        movement.Move(seeker, gameObject.transform, target);
     }
 
-    private void MoveToGoal(Vector2 playerCoordinates)
+    public override void MoveToGoal(Transform target)
     {
-        Fly(playerCoordinates);
+        Fly(target);
     }
-    
-    private void Fly(Vector2 playerCoordinates)
-    {
-        flyaction.Move(playerCoordinates);
-    }
-
 }
