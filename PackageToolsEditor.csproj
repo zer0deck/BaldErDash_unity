@@ -36,11 +36,8 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Assets\Plugins\AstarPathfindingProject\Plugins\DotNetZip\Pathfinding.Ionic.Zip.Reduced.dll" />
-  </ItemGroup>
-  <ItemGroup>
-     <Compile Include="Assets\Plugins\AstarPathfindingProject\PackageTools\Editor\EditorBase.cs" />
      <Compile Include="Assets\Plugins\AstarPathfindingProject\PackageTools\Editor\EditorGUIx.cs" />
+     <Compile Include="Assets\Plugins\AstarPathfindingProject\PackageTools\Editor\EditorBase.cs" />
      <Compile Include="Assets\Plugins\AstarPathfindingProject\PackageTools\Editor\EnumFlagDrawer.cs" />
     <Reference Include="UnityEngine">
         <HintPath>D:\Program Files\Editor\2021.3.13f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
@@ -348,11 +345,11 @@
     <Reference Include="Unity.VisualScripting.Antlr3.Runtime">
         <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.visualscripting@1.7.8\Runtime\VisualScripting.Flow\Dependencies\NCalc\Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-        <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.nuget.newtonsoft-json@3.0.2\Runtime\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="Pathfinding.Ionic.Zip.Reduced">
         <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Assets\Plugins\AstarPathfindingProject\Plugins\DotNetZip\Pathfinding.Ionic.Zip.Reduced.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+        <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.nuget.newtonsoft-json@3.0.2\Runtime\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="nunit.framework">
         <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.ext.nunit@1.0.6\net35\unity-custom\nunit.framework.dll</HintPath>

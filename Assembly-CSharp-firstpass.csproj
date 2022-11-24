@@ -36,9 +36,6 @@
     <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
   </PropertyGroup>
   <ItemGroup>
-    <Analyzer Include="D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Assets\Plugins\AstarPathfindingProject\Plugins\DotNetZip\Pathfinding.Ionic.Zip.Reduced.dll" />
-  </ItemGroup>
-  <ItemGroup>
      <Compile Include="Assets\Plugins\Standard Assets\CrossPlatformInput\Scripts\ButtonHandler.cs" />
      <Compile Include="Assets\Plugins\Standard Assets\CrossPlatformInput\Scripts\VirtualInput.cs" />
      <Compile Include="Assets\Plugins\MobileNot\iOS\iOSGameNotification.cs" />
@@ -339,11 +336,11 @@
     <Reference Include="Unity.VisualScripting.Antlr3.Runtime">
         <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.visualscripting@1.7.8\Runtime\VisualScripting.Flow\Dependencies\NCalc\Unity.VisualScripting.Antlr3.Runtime.dll</HintPath>
     </Reference>
-    <Reference Include="Newtonsoft.Json">
-        <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.nuget.newtonsoft-json@3.0.2\Runtime\Newtonsoft.Json.dll</HintPath>
-    </Reference>
     <Reference Include="Pathfinding.Ionic.Zip.Reduced">
         <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Assets\Plugins\AstarPathfindingProject\Plugins\DotNetZip\Pathfinding.Ionic.Zip.Reduced.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+        <HintPath>D:\Users\zer0deck\Documents\Work\Unity\BaldErDash_unity\Library\PackageCache\com.unity.nuget.newtonsoft-json@3.0.2\Runtime\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="UnityEditor.iOS.Extensions.Xcode">
         <HintPath>D:\Program Files\Editor\2021.3.13f1\Editor\Data\PlaybackEngines\AppleTVSupport\UnityEditor.iOS.Extensions.Xcode.dll</HintPath>
@@ -893,9 +890,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="PackageToolsEditor.csproj">
+      <Project>{73944743-aa15-9539-8f85-4089c67daf9a}</Project>
+      <Name>PackageToolsEditor</Name>
+    </ProjectReference>
     <ProjectReference Include="UniTask.TextMeshPro.csproj">
       <Project>{564e4e9f-576b-789a-75f9-ec9081fa33fa}</Project>
       <Name>UniTask.TextMeshPro</Name>
+    </ProjectReference>
+    <ProjectReference Include="AstarPathfindingProjectEditor.csproj">
+      <Project>{02fa1c79-399a-88ad-83a4-a2710ae9cbdb}</Project>
+      <Name>AstarPathfindingProjectEditor</Name>
     </ProjectReference>
     <ProjectReference Include="UniTask.Addressables.csproj">
       <Project>{c6463a79-fb4d-e4be-b3ea-c281ceef0776}</Project>
@@ -909,21 +914,13 @@
       <Project>{2781b8a0-3054-39e1-1544-ddc2ebe7fffb}</Project>
       <Name>UniTask.Linq</Name>
     </ProjectReference>
-    <ProjectReference Include="UniTask.csproj">
-      <Project>{56e7a18d-6cb1-2d18-7224-ae6df49c054b}</Project>
-      <Name>UniTask</Name>
-    </ProjectReference>
     <ProjectReference Include="AstarPathfindingProject.csproj">
       <Project>{3920ada6-9510-75da-ae3c-f422892e453b}</Project>
       <Name>AstarPathfindingProject</Name>
     </ProjectReference>
-    <ProjectReference Include="PackageToolsEditor.csproj">
-      <Project>{73944743-aa15-9539-8f85-4089c67daf9a}</Project>
-      <Name>PackageToolsEditor</Name>
-    </ProjectReference>
-    <ProjectReference Include="AstarPathfindingProjectEditor.csproj">
-      <Project>{02fa1c79-399a-88ad-83a4-a2710ae9cbdb}</Project>
-      <Name>AstarPathfindingProjectEditor</Name>
+    <ProjectReference Include="UniTask.csproj">
+      <Project>{56e7a18d-6cb1-2d18-7224-ae6df49c054b}</Project>
+      <Name>UniTask</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
