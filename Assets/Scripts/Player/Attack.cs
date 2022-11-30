@@ -83,4 +83,10 @@ public class Attack : MonoBehaviour
 			}
 		}
 	}
+	#if UNITY_EDITOR
+	private void OnDrawGizmos() 
+	{
+			Gizmos.DrawSphere(attackCheck.position, 0.9f);
+	}
+	#endif // UNITY_EDITOR
 }

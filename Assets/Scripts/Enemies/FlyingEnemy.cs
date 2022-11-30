@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using Pathfinding;
 using Cysharp.Threading.Tasks;
+using System.Threading;
 
-public class Bee : MonoBehaviour
+public class FlyingEnemy : MonoBehaviour
 {
 
     [Header("Игрок")]
@@ -12,7 +13,7 @@ public class Bee : MonoBehaviour
 
     [Header("Дистанция зрения")]
     [Range(2.0f,10.0f)]
-    public float FOV = 0.1f;
+    public float FOV = 4.5f;
 
     [Header("Величина шага")]
     public float nextWaypointDistance = 3f;
@@ -54,10 +55,12 @@ public class Bee : MonoBehaviour
     private bool canAttack = true;
     private bool isHitted = false;
     private bool isInvincible = false;
+    private bool isDead=false;
 	private float distToPlayer;
 	private float distToPlayerY;
     private CharacterController2D pScript;
 	public Transform attackCheck;
+    CancellationTokenSource cancellEverythingByHit;
 
 
     private void Start ()
@@ -67,6 +70,7 @@ public class Bee : MonoBehaviour
         target = player.transform;
         animator = GetComponent<Animator>();
         pScript = player.GetComponent<CharacterController2D>();
+        cancellEverythingByHit = new CancellationTokenSource();
         // attackCheck = transform.Find("AttackCheck").transform;
         
         // InvokeRepeating("UpdatePath", 0f, .5f);
@@ -90,6 +94,12 @@ public class Bee : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isDead) return;
+        if (life <= 0)
+		{
+			WaitToDead().Forget();
+            isDead = true;
+		}
         distToPlayer = player.transform.position.x - transform.position.x;
 		distToPlayerY = player.transform.position.y - transform.position.y;
         animator.SetBool("Idle", true);
@@ -102,14 +112,16 @@ public class Bee : MonoBehaviour
             InvokeRepeating("UpdatePath", 0f, .5f);
         }
 
-        if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
+        if (isHitted) return;
+        if (Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
         {
             rb.velocity = new Vector2(0f, rb.velocity.y);
             if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
                 Flip();
             if (canAttack)
             {
-                Attack().Forget();
+                cancellEverythingByHit = new CancellationTokenSource();
+                Attack().AttachExternalCancellation(cancellEverythingByHit.Token).Forget();
                 return;
             }
         }
@@ -174,10 +186,14 @@ public class Bee : MonoBehaviour
     {
         if (!isInvincible)
         {
+            cancellEverythingByHit.Cancel();
             float direction = damage / Mathf.Abs(damage);
             damage = Mathf.Abs(damage);
             animator.SetBool("Hit", true);
+            animator.SetBool("Attack", false);
+            animator.SetBool("Idle", false);
             life -= damage;
+            Debug.Log($"Life: {life}");
             rb.velocity = new Vector2(0, 0);
             rb.AddForce(new Vector2(direction * 300f, 100f)); 
             HitTime().Forget();
@@ -187,20 +203,25 @@ public class Bee : MonoBehaviour
     private async UniTask Attack()
     {
         canAttack = false;
+        // Debug.Log($"Anim Speed before: {animator.speed}");
         animator.SetBool("Attack", true);
+        animator.speed = (float)Mathf.Round(0.8f/attackLength*100)/100;
+        // Debug.Log($"Anim Speed in: {animator.speed}");
         await UniTask.Delay(System.TimeSpan.FromSeconds((float)Mathf.Round(attackLength/2.0f*100)/100));
         Collider2D[] collidersEnemies = Physics2D.OverlapCircleAll(attackCheck.position, meleeDist);
         for (int i = 0; i < collidersEnemies.Length; i++)
         {
             if (collidersEnemies[i].gameObject.tag == "Player")
             {
-                if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f))
+                if ((distToPlayer > 2.0f && transform.localScale.x < 0f) || (distToPlayer < 2.0f && transform.localScale.x > 0f))
                     pScript.ApplyDamage(dmg, transform.position);
             }
         }
         await UniTask.Delay(System.TimeSpan.FromSeconds((float)Mathf.Round(attackLength/2.0f*100)/100));
         canAttack = true;
         animator.SetBool("Attack", false);
+        animator.speed = 1.0f;
+        // Debug.Log($"Anim Speed after: {animator.speed}");
     }
 
     private async UniTask HitTime()
