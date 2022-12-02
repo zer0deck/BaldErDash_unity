@@ -45,6 +45,8 @@ public class WalkingEnemy : MonoBehaviour
     [Header("Сила дэша")]
     [Range(10.0f,30.0f)]
     public float dashForce = 15f;
+	
+	[SerializeField] private LayerMask whatIsGround;
 
 
     // Технические элементы
@@ -78,7 +80,7 @@ public class WalkingEnemy : MonoBehaviour
 	private float distToPlayerY;
     private CharacterController2D pScript;
 	public Transform attackCheck;
-    CancellationTokenSource cancellEverythingByHit;
+	public Transform wallCheck;
 
 	public GameObject throwableObject;
 
@@ -91,7 +93,6 @@ public class WalkingEnemy : MonoBehaviour
 		rb = GetComponent<Rigidbody2D>();
 		attackCheck = transform.Find("AttackCheck").transform;
 		animator = GetComponent<Animator>();
-		cancellEverythingByHit = new CancellationTokenSource();
 	}
 
     void UpdatePath()
@@ -143,41 +144,84 @@ public class WalkingEnemy : MonoBehaviour
 
 		if (isFollowingPlayer)
 		{
-			// if (!isHitted)
-			// {
-			// 	if (Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
-			// 	{
-			// 		rb.velocity = new Vector2(0f, rb.velocity.y);
-			// 		if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-			// 			Flip();
-			// 		if (canAttack)
-			// 		{
-			// 			MeleeAttack();
-			// 		}
-			// 	}
-			// 	else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
-			// 	{
-			// 		animator.SetBool("IsWaiting", false);
-			// 		rb.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, rb.velocity.y);
-			// 	}
+			if (!isHitted)
+			{
+				if (Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 1f)
+				{
+					rb.velocity = new Vector2(0f, rb.velocity.y);
+					if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
+						Flip();
+					if (canAttack)
+					{
+						MeleeAttack();
+					}
+				}
+				else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
+				{
+					if (!endDecision)
+					{
+						if (randomDecision < 0.5f) RangeAttack();
+					}
+					else
+					{
+						endDecision = false;
+					}
 
-			// 	// return;
-			// }
-			// else
-			// {
-			// 	if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
-			// 	{
-			// 		Flip();
-			// 		Dash().Forget();
-			// 	}
-			// 	else
-			// 		Dash().Forget();
-			// }
+				}
+
+
+				// return;
+			}
+			else
+			{
+				if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
+				{
+					Flip();
+					Dash().Forget();
+				}
+				else
+					Dash().Forget();
+			}
 		}
 
         if (path == null)
         {
-            return;
+			Collider2D[] collidersWall = Physics2D.OverlapCircleAll(wallCheck.position, 0.3f, whatIsGround);
+			for (int i = 0; i < collidersWall.Length; i++)
+			{
+				if (collidersWall[i].gameObject != null)
+				{
+					isDashing = false;
+					Flip();
+				}
+			}
+
+            if (!endDecision)
+			{
+
+				if (randomDecision < 0.3f)
+					Run();
+				else if (randomDecision >= 0.3f && randomDecision < 0.4f)
+				{
+					SwitchDirection();
+				}
+				else if (randomDecision >= 0.4f && randomDecision < 0.6f)
+					Jump();
+				else if (randomDecision >= 0.6f && randomDecision < 0.8f && !dashCooldown)
+				{
+					dashCooldown = true;
+					Dash().Forget();
+				}
+				else if (randomDecision >= 0.8f && randomDecision < 0.95f)
+					RangeAttack();
+				else
+					Idle();
+			}
+			else
+			{
+				endDecision = false;
+			}
+			return;
         }
 
 		// else if (!isHitted)
@@ -249,7 +293,7 @@ public class WalkingEnemy : MonoBehaviour
 
         animator.SetBool("IsWaiting", false);
 		rb.velocity = new Vector2(speed, rb.velocity.y)*direction;
-		Debug.Log(rb.velocity);
+		// Debug.Log(rb.velocity);
         float distance = Vector2.Distance(rb.position, path.vectorPath[currentWaypoint]);
 
         if (distance < nextWaypointDistance)
@@ -282,8 +326,8 @@ public class WalkingEnemy : MonoBehaviour
 			damage = Mathf.Abs(damage);
 			animator.SetBool("Hit", true);
 			life -= damage;
-			transform.gameObject.GetComponent<Rigidbody2D>().velocity = new Vector2(0, 0);
-			transform.gameObject.GetComponent<Rigidbody2D>().AddForce(new Vector2(direction * 300f, 100f)); 
+			rb.velocity = new Vector2(0, 0);
+			rb.AddForce(new Vector2(direction * 300f, 100f)); 
 			HitTime().Forget();
 		}
 	}
@@ -294,17 +338,9 @@ public class WalkingEnemy : MonoBehaviour
 		Collider2D[] collidersEnemies = Physics2D.OverlapCircleAll(attackCheck.position, 0.9f);
 		for (int i = 0; i < collidersEnemies.Length; i++)
 		{
-			if (collidersEnemies[i].gameObject.tag == "Enemy" && collidersEnemies[i].gameObject != gameObject )
+			if (collidersEnemies[i].gameObject.tag == "Player")
 			{
-				if (transform.localScale.x < 1)
-				{
-					dmg = -dmg;
-				}
-				collidersEnemies[i].gameObject.SendMessage("ApplyDamage", dmg);
-			}
-			else if (collidersEnemies[i].gameObject.tag == "Player")
-			{
-				collidersEnemies[i].gameObject.GetComponent<CharacterController2D>().ApplyDamage(2f, transform.position);
+				pScript.ApplyDamage(2f, transform.position);
 			}
 		}
 		WaitToAttack(0.5f).Forget();
@@ -312,6 +348,7 @@ public class WalkingEnemy : MonoBehaviour
 
 	public void RangeAttack()
 	{
+		Debug.Log("RangeAttack");
 		if (doOnceDecision)
 		{
 			GameObject throwableProj = Instantiate(throwableObject, transform.position + new Vector3(transform.localScale.x * 0.5f, -0.2f), Quaternion.identity) as GameObject;
