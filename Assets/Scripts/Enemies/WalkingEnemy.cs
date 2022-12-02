@@ -1,146 +1,177 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Cysharp.Threading.Tasks;
+using UnityEngine.SceneManagement;
 
 public class WalkingEnemy : MonoBehaviour
 {
-	private Rigidbody2D m_Rigidbody2D;
+
+    [Header("Игрок")]
+    public GameObject player;
+
+    [Header("Дистанция зрения")]
+    [Range(2.0f,10.0f)]
+    public float FOV = 4.5f;
+
+    [Header("Скорость передвижения")]
+    [Range(1f,10f)]
+    public float speed = 2f;
+
+    [Header("ХП")]
+    [Range(5f,30f)]
+    public float life = 10f;
+
+    [Header("Урон")]
+    [Range(1f,5f)]
+    public float dmg = 2.0f;
+
+    [Header("Длительность атаки (с)")]
+    [Range(0.1f,1.5f)]
+    public float attackLength = 0.8f;
+
+    [Header("Дистанция ближней атаки")]
+    [Range(1.0f,3.0f)]
+    public float meleeDist = 1.5f;
+
+    [Header("Дистанция дальней атаки")]
+    [Range(3.0f,8.0f)]
+    public float rangeDist = 4f;
+
+    [Header("Сила дэша")]
+    [Range(10.0f,30.0f)]
+    public float dashForce = 15f;
+
+
+    // Технические элементы
+	private Animator animator;
+	private Rigidbody2D rb;
 	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
-
-	public float life = 10;
-
 	private bool facingRight = true;
 
-	public float speed = 5f; 
+	// Поиск пути
 
-	public bool isInvincible = false;
-	private bool isHitted = false;
-
-	[SerializeField] private float m_DashForce = 25f;
-	private bool isDashing = false;
-
-	public GameObject enemy;
-	private float distToPlayer;
-	private float distToPlayerY;
-	public float meleeDist = 1.5f;
-	public float rangeDist = 5f;
-	private bool canAttack = true;
-	private Transform attackCheck;
-	public float dmgValue = 4;
-
-	public GameObject throwableObject;
-
+	// Случайные решения
 	private float randomDecision = 0;
 	private bool doOnceDecision = true;
 	private bool endDecision = false;
-	private Animator anim;
+
+
+	// Атака и дамаг
+	private bool isDashing = false;
+	private bool dashCooldown = false;
+    private bool canAttack = true;
+    private bool isHitted = false;
+    private bool isInvincible = false;
+    private bool isDead=false;
+	private float distToPlayer;
+	private float distToPlayerY;
+    private CharacterController2D pScript;
+	public Transform attackCheck;
+    // CancellationTokenSource cancellEverythingByHit;
+
+	public GameObject throwableObject;
+
 
 	void Awake()
 	{
-		m_Rigidbody2D = GetComponent<Rigidbody2D>();
+		rb = GetComponent<Rigidbody2D>();
 		attackCheck = transform.Find("AttackCheck").transform;
-		anim = GetComponent<Animator>();
+		animator = GetComponent<Animator>();
 	}
 
 	// Update is called once per frame
 	void FixedUpdate()
 	{
-
+		if (isDead) return;
 		if (life <= 0)
 		{
-			StartCoroutine(DestroyEnemy());
+			WaitToDead().Forget();
+			isDead = true;
 		}
 
-		else if (enemy != null) 
+		if (isDashing)
 		{
-			if (isDashing)
-			{
-				m_Rigidbody2D.velocity = new Vector2(transform.localScale.x * m_DashForce, 0);
-			}
-			else if (!isHitted)
-			{
-				distToPlayer = enemy.transform.position.x - transform.position.x;
-				distToPlayerY = enemy.transform.position.y - transform.position.y;
+			rb.velocity = new Vector2(transform.localScale.x * dashForce, 0);
+		}
+		else if (!isHitted)
+		{
+			distToPlayer = player.transform.position.x - transform.position.x;
+			distToPlayerY = player.transform.position.y - transform.position.y;
 
-				if (Mathf.Abs(distToPlayer) < 0.25f)
-				{
-					GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
-					anim.SetBool("IsWaiting", true);
-				}
-				else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
-				{
-					GetComponent<Rigidbody2D>().velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
-					if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-						Flip();
-					if (canAttack)
-					{
-						MeleeAttack();
-					}
-				}
-				else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
-				{
-					anim.SetBool("IsWaiting", false);
-					m_Rigidbody2D.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, m_Rigidbody2D.velocity.y);
-				}
-				else
-				{
-					if (!endDecision)
-					{
-						if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-							Flip();
-
-						if (randomDecision < 0.4f)
-							Run();
-						else if (randomDecision >= 0.4f && randomDecision < 0.6f)
-							Jump();
-						else if (randomDecision >= 0.6f && randomDecision < 0.8f)
-							StartCoroutine(Dash());
-						else if (randomDecision >= 0.8f && randomDecision < 0.95f)
-							RangeAttack();
-						else
-							Idle();
-					}
-					else
-					{
-						endDecision = false;
-					}
-				}
-			}
-			else if (isHitted)
+			if (Mathf.Abs(distToPlayer) < 0.25f)
 			{
-				if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
-				{
+				GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
+				animator.SetBool("IsWaiting", true);
+			}
+			else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
+			{
+				GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
+				if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
 					Flip();
-					StartCoroutine(Dash());
+				if (canAttack)
+				{
+					MeleeAttack();
+				}
+			}
+			else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
+			{
+				animator.SetBool("IsWaiting", false);
+				rb.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, rb.velocity.y);
+			}
+			else
+			{
+				if (!endDecision)
+				{
+
+					if (randomDecision < 0.3f)
+						Run();
+					else if (randomDecision >= 0.3f && randomDecision < 0.4f && Mathf.Abs(distToPlayer)<FOV)
+					{
+						Debug.Log("Flip");
+						SwitchDirection();
+					}
+					else if (randomDecision >= 0.4f && randomDecision < 0.6f)
+						Jump();
+					else if (randomDecision >= 0.6f && randomDecision < 0.8f && !dashCooldown)
+					{
+						dashCooldown = true;
+						Dash().Forget();
+					}
+					else if (randomDecision >= 0.8f && randomDecision < 0.95f)
+						RangeAttack();
+					else
+						Idle();
 				}
 				else
-					StartCoroutine(Dash());
+				{
+					endDecision = false;
+				}
 			}
 		}
-		else 
+		else if (isHitted)
 		{
-			enemy = GameObject.Find("DrawCharacter");
+			if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
+			{
+				Flip();
+				Dash().Forget();
+			}
+			else
+				Dash().Forget();
 		}
 
-		if (transform.localScale.x * m_Rigidbody2D.velocity.x > 0 && !m_FacingRight && life > 0)
-		{
-			// ... flip the player.
-			Flip();
-		}
-		// Otherwise if the input is moving the player left and the player is facing right...
-		else if (transform.localScale.x * m_Rigidbody2D.velocity.x < 0 && m_FacingRight && life > 0)
-		{
-			// ... flip the player.
-			Flip();
-		}
+        // if (rb.velocity.x>0 && !facingRight)
+        // {
+        //     Flip();
+        // } else if (rb.velocity.x<0 && facingRight)
+        // {
+        //     Flip();
+        // }
 	}
 
 	void Flip()
 	{
-		// Switch the way the player is labelled as facing.
 		facingRight = !facingRight;
-
-		// Multiply the player's x local scale by -1.
 		Vector3 theScale = transform.localScale;
 		theScale.x *= -1;
 		transform.localScale = theScale;
@@ -152,11 +183,11 @@ public class WalkingEnemy : MonoBehaviour
 		{
 			float direction = damage / Mathf.Abs(damage);
 			damage = Mathf.Abs(damage);
-			anim.SetBool("Hit", true);
+			animator.SetBool("Hit", true);
 			life -= damage;
 			transform.gameObject.GetComponent<Rigidbody2D>().velocity = new Vector2(0, 0);
 			transform.gameObject.GetComponent<Rigidbody2D>().AddForce(new Vector2(direction * 300f, 100f)); 
-			StartCoroutine(HitTime());
+			HitTime().Forget();
 		}
 	}
 
@@ -170,16 +201,16 @@ public class WalkingEnemy : MonoBehaviour
 			{
 				if (transform.localScale.x < 1)
 				{
-					dmgValue = -dmgValue;
+					dmg = -dmg;
 				}
-				collidersEnemies[i].gameObject.SendMessage("ApplyDamage", dmgValue);
+				collidersEnemies[i].gameObject.SendMessage("ApplyDamage", dmg);
 			}
 			else if (collidersEnemies[i].gameObject.tag == "Player")
 			{
 				collidersEnemies[i].gameObject.GetComponent<CharacterController2D>().ApplyDamage(2f, transform.position);
 			}
 		}
-		StartCoroutine(WaitToAttack(0.5f));
+		WaitToAttack(0.5f).Forget();
 	}
 
 	public void RangeAttack()
@@ -190,90 +221,131 @@ public class WalkingEnemy : MonoBehaviour
 			throwableProj.GetComponent<ThrowableProjectile>().owner = gameObject;
 			Vector2 direction = new Vector2(transform.localScale.x, 0f);
 			throwableProj.GetComponent<ThrowableProjectile>().direction = direction;
-			StartCoroutine(NextDecision(0.5f));
+			NextDecision(0.5f).Forget();
 		}
 	}
 
 	public void Run()
 	{
-		anim.SetBool("IsWaiting", false);
-		m_Rigidbody2D.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, m_Rigidbody2D.velocity.y);
+		animator.SetBool("IsWaiting", false);
+		rb.velocity = new Vector2(transform.localScale.x / Mathf.Abs(transform.localScale.x) * speed, rb.velocity.y);
 		if (doOnceDecision)
-			StartCoroutine(NextDecision(0.5f));
+			NextDecision(0.5f).Forget();
 	}
 	public void Jump()
 	{
-		Vector3 targetVelocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, m_Rigidbody2D.velocity.y);
+		Vector3 targetVelocity = new Vector2(transform.localScale.x / Mathf.Abs(transform.localScale.x) * speed, rb.velocity.y);
 		Vector3 velocity = Vector3.zero;
-		m_Rigidbody2D.velocity = Vector3.SmoothDamp(m_Rigidbody2D.velocity, targetVelocity, ref velocity, 0.05f);
+		rb.velocity = Vector3.SmoothDamp(rb.velocity, targetVelocity, ref velocity, 0.05f);
 		if (doOnceDecision)
 		{
-			anim.SetBool("IsWaiting", false);
-			m_Rigidbody2D.AddForce(new Vector2(0f, 850f));
-			StartCoroutine(NextDecision(1f));
+			animator.SetBool("IsWaiting", false);
+			rb.AddForce(new Vector2(0f, 850f));
+			NextDecision(1f).Forget();
 		}
 	}
 
 	public void Idle()
 	{
-		m_Rigidbody2D.velocity = new Vector2(0f, m_Rigidbody2D.velocity.y);
+		rb.velocity = new Vector2(0f, rb.velocity.y);
 		if (doOnceDecision)
 		{
-			anim.SetBool("IsWaiting", true);
-			StartCoroutine(NextDecision(1f));
+			animator.SetBool("IsWaiting", true);
+			NextDecision(1f).Forget();
 		}
 	}
 
+	public void SwitchDirection()
+	{
+		Flip();
+		if (doOnceDecision)
+		{
+			animator.SetBool("IsWaiting", true);
+			NextDecision(0).Forget();
+		}
+	}
 	public void EndDecision()
 	{
 		randomDecision = Random.Range(0.0f, 1.0f); 
 		endDecision = true;
 	}
 
-	IEnumerator HitTime()
+	private async UniTask HitTime()
 	{
 		isInvincible = true;
 		isHitted = true;
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		isHitted = false;
 		isInvincible = false;
 	}
 
-	IEnumerator WaitToAttack(float time)
+	private async UniTask WaitToAttack(float time)
 	{
 		canAttack = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canAttack = true;
 	}
 
-	IEnumerator Dash()
+	private async UniTask Dash()
 	{
-		anim.SetBool("IsDashing", true);
+		animator.SetBool("IsDashing", true);
 		isDashing = true;
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		isDashing = false;
 		EndDecision();
+		await UniTask.Delay(System.TimeSpan.FromSeconds(1f));
+		dashCooldown = false;
 	}
 
-	IEnumerator NextDecision(float time)
+	private async UniTask NextDecision(float time)
 	{
 		doOnceDecision = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		EndDecision();
 		doOnceDecision = true;
-		anim.SetBool("IsWaiting", false);
+		animator.SetBool("IsWaiting", false);
 	}
 
-	IEnumerator DestroyEnemy()
+	private async UniTask WaitToDead()
 	{
 		CapsuleCollider2D capsule = GetComponent<CapsuleCollider2D>();
 		capsule.size = new Vector2(1f, 0.25f);
 		capsule.offset = new Vector2(0f, -0.8f);
 		capsule.direction = CapsuleDirection2D.Horizontal;
-		transform.GetComponent<Animator>().SetBool("IsDead", true);
-		yield return new WaitForSeconds(0.25f);
-		m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
-		yield return new WaitForSeconds(1f);
+		animator.SetBool("IsDead", true);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.25f));
+		rb.velocity = new Vector2(0, rb.velocity.y);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(1f));
 		Destroy(gameObject);
 	}
+
+#if UNITY_EDITOR
+
+        private static void OnDrawGizmosCircle(Vector3 center, float radius, Color color, int segments)
+        {
+            Gizmos.color = color;
+            const float TWO_PI = Mathf.PI *2;
+            float step = TWO_PI / (float)segments;
+            float theta = 0;
+            float x = radius * Mathf.Cos(theta);
+            float y = radius * Mathf.Sin(theta);
+            Vector3 pos = center + new Vector3(x, y, 0);
+            Vector3 newPos;
+            Vector3 lastPos = pos;
+            for (theta = step; theta < TWO_PI; theta += step) 
+            {
+                x = radius * Mathf.Cos(theta);
+                y = radius * Mathf.Sin(theta);
+                newPos = center + new Vector3(x, y, 0);
+                Gizmos.DrawLine(pos, newPos);
+                pos = newPos;
+            }
+            Gizmos.DrawLine(pos, lastPos);
+        }
+        private void OnDrawGizmos(){
+            OnDrawGizmosCircle(transform.position, FOV, Color.yellow, 10);
+            OnDrawGizmosCircle(attackCheck.position, meleeDist, Color.red, 10);
+			OnDrawGizmosCircle(attackCheck.position, rangeDist, Color.red, 10);
+        }
+#endif // UNITY_EDITOR
 }

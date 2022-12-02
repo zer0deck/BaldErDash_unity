@@ -23,8 +23,8 @@ public class FlyingEnemy : MonoBehaviour
     public float speed = 400f;
 
     [Header("ХП")]
-    [Range(50f,300f)]
-    public float life = 100f;
+    [Range(5f,30f)]
+    public float life = 10f;
 
     [Header("Урон")]
     [Range(1f,5f)]
@@ -240,7 +240,7 @@ public class FlyingEnemy : MonoBehaviour
         capsule.size = new Vector2(1f, 0.25f);
         capsule.offset = new Vector2(0f, -0.8f);
         capsule.direction = CapsuleDirection2D.Horizontal;
-        transform.GetComponent<Animator>().SetBool("IsDead", true);
+        animator.SetBool("IsDead", true);
         canAttack = false;
         isInvincible = true;
         await UniTask.Delay(System.TimeSpan.FromSeconds(0.25f));
