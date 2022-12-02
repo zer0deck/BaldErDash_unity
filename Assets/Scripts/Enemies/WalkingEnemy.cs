@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
-using UnityEngine.SceneManagement;
+using Pathfinding;
+using System.Threading;
 
 public class WalkingEnemy : MonoBehaviour
 {
@@ -12,11 +13,14 @@ public class WalkingEnemy : MonoBehaviour
 
     [Header("Дистанция зрения")]
     [Range(2.0f,10.0f)]
-    public float FOV = 4.5f;
+    public float FOV = 6f;
+
+    [Header("Величина шага")]
+    public float nextWaypointDistance = 3f;
 
     [Header("Скорость передвижения")]
     [Range(1f,10f)]
-    public float speed = 2f;
+    public float speed = 3f;
 
     [Header("ХП")]
     [Range(5f,30f)]
@@ -50,6 +54,12 @@ public class WalkingEnemy : MonoBehaviour
 	private bool facingRight = true;
 
 	// Поиск пути
+    private Transform target;
+    private Seeker seeker;
+    private Path path = null;
+    private int currentWaypoint;
+    private bool reachedEndOfPath=false;
+    private bool isFollowingPlayer=false;
 
 	// Случайные решения
 	private float randomDecision = 0;
@@ -68,17 +78,38 @@ public class WalkingEnemy : MonoBehaviour
 	private float distToPlayerY;
     private CharacterController2D pScript;
 	public Transform attackCheck;
-    // CancellationTokenSource cancellEverythingByHit;
+    CancellationTokenSource cancellEverythingByHit;
 
 	public GameObject throwableObject;
 
 
-	void Awake()
+	void Start()
 	{
+		seeker = GetComponent<Seeker>();
+        target = player.transform;
+        pScript = player.GetComponent<CharacterController2D>();
 		rb = GetComponent<Rigidbody2D>();
 		attackCheck = transform.Find("AttackCheck").transform;
 		animator = GetComponent<Animator>();
+		cancellEverythingByHit = new CancellationTokenSource();
 	}
+
+    void UpdatePath()
+    {
+        if (seeker.IsDone())
+        {
+            seeker.StartPath(rb.position, target.position, OnPathComplete);
+        }
+    }
+
+    private void OnPathComplete(Path p) 
+    {
+        if (!p.error)
+        {
+            path = p;
+            currentWaypoint = 0;
+        }
+    }
 
 	// Update is called once per frame
 	void FixedUpdate()
@@ -90,83 +121,149 @@ public class WalkingEnemy : MonoBehaviour
 			isDead = true;
 		}
 
+		distToPlayer = player.transform.position.x - transform.position.x;
+		distToPlayerY = player.transform.position.y - transform.position.y;
+
+        if ((Mathf.Abs(distToPlayer) < FOV &&  Mathf.Abs(distToPlayerY) < FOV) && !isFollowingPlayer)
+        {
+            isFollowingPlayer = true;
+            InvokeRepeating("UpdatePath", 0f, .5f);
+        }
+		else if ((Mathf.Abs(distToPlayer) > FOV*2 ||  Mathf.Abs(distToPlayerY) > FOV*2) && isFollowingPlayer)
+        {
+            CancelInvoke();
+            path = null;
+			isFollowingPlayer = false;
+        }
+
 		if (isDashing)
 		{
 			rb.velocity = new Vector2(transform.localScale.x * dashForce, 0);
 		}
-		else if (!isHitted)
-		{
-			distToPlayer = player.transform.position.x - transform.position.x;
-			distToPlayerY = player.transform.position.y - transform.position.y;
 
-			if (Mathf.Abs(distToPlayer) < 0.25f)
-			{
-				GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
-				animator.SetBool("IsWaiting", true);
-			}
-			else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
-			{
-				GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
-				if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
-					Flip();
-				if (canAttack)
-				{
-					MeleeAttack();
-				}
-			}
-			else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
-			{
-				animator.SetBool("IsWaiting", false);
-				rb.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, rb.velocity.y);
-			}
-			else
-			{
-				if (!endDecision)
-				{
-
-					if (randomDecision < 0.3f)
-						Run();
-					else if (randomDecision >= 0.3f && randomDecision < 0.4f && Mathf.Abs(distToPlayer)<FOV)
-					{
-						Debug.Log("Flip");
-						SwitchDirection();
-					}
-					else if (randomDecision >= 0.4f && randomDecision < 0.6f)
-						Jump();
-					else if (randomDecision >= 0.6f && randomDecision < 0.8f && !dashCooldown)
-					{
-						dashCooldown = true;
-						Dash().Forget();
-					}
-					else if (randomDecision >= 0.8f && randomDecision < 0.95f)
-						RangeAttack();
-					else
-						Idle();
-				}
-				else
-				{
-					endDecision = false;
-				}
-			}
-		}
-		else if (isHitted)
+		if (isFollowingPlayer)
 		{
-			if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
-			{
-				Flip();
-				Dash().Forget();
-			}
-			else
-				Dash().Forget();
+			// if (!isHitted)
+			// {
+			// 	if (Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
+			// 	{
+			// 		rb.velocity = new Vector2(0f, rb.velocity.y);
+			// 		if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
+			// 			Flip();
+			// 		if (canAttack)
+			// 		{
+			// 			MeleeAttack();
+			// 		}
+			// 	}
+			// 	else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
+			// 	{
+			// 		animator.SetBool("IsWaiting", false);
+			// 		rb.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, rb.velocity.y);
+			// 	}
+
+			// 	// return;
+			// }
+			// else
+			// {
+			// 	if ((distToPlayer > 0f && transform.localScale.x > 0f) || (distToPlayer < 0f && transform.localScale.x < 0f))
+			// 	{
+			// 		Flip();
+			// 		Dash().Forget();
+			// 	}
+			// 	else
+			// 		Dash().Forget();
+			// }
 		}
 
-        // if (rb.velocity.x>0 && !facingRight)
-        // {
-        //     Flip();
-        // } else if (rb.velocity.x<0 && facingRight)
-        // {
-        //     Flip();
-        // }
+        if (path == null)
+        {
+            return;
+        }
+
+		// else if (!isHitted)
+		// {
+		// 	distToPlayer = player.transform.position.x - transform.position.x;
+		// 	distToPlayerY = player.transform.position.y - transform.position.y;
+
+		// 	if (Mathf.Abs(distToPlayer) < 0.25f)
+		// 	{
+		// 		GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
+		// 		animator.SetBool("IsWaiting", true);
+		// 	}
+		// 	else if (Mathf.Abs(distToPlayer) > 0.25f && Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
+		// 	{
+		// 		GetComponent<Rigidbody2D>().velocity = new Vector2(0f, rb.velocity.y);
+		// 		if ((distToPlayer > 0f && transform.localScale.x < 0f) || (distToPlayer < 0f && transform.localScale.x > 0f)) 
+		// 			Flip();
+		// 		if (canAttack)
+		// 		{
+		// 			MeleeAttack();
+		// 		}
+		// 	}
+		// 	else if (Mathf.Abs(distToPlayer) > meleeDist && Mathf.Abs(distToPlayer) < rangeDist)
+		// 	{
+		// 		animator.SetBool("IsWaiting", false);
+		// 		rb.velocity = new Vector2(distToPlayer / Mathf.Abs(distToPlayer) * speed, rb.velocity.y);
+		// 	}
+		// 	else
+		// 	{
+		// 		if (!endDecision)
+		// 		{
+
+		// 			if (randomDecision < 0.3f)
+		// 				Run();
+		// 			else if (randomDecision >= 0.3f && randomDecision < 0.4f && Mathf.Abs(distToPlayer)<FOV)
+		// 			{
+		// 				Debug.Log("Flip");
+		// 				SwitchDirection();
+		// 			}
+		// 			else if (randomDecision >= 0.4f && randomDecision < 0.6f)
+		// 				Jump();
+		// 			else if (randomDecision >= 0.6f && randomDecision < 0.8f && !dashCooldown)
+		// 			{
+		// 				dashCooldown = true;
+		// 				Dash().Forget();
+		// 			}
+		// 			else if (randomDecision >= 0.8f && randomDecision < 0.95f)
+		// 				RangeAttack();
+		// 			else
+		// 				Idle();
+		// 		}
+		// 		else
+		// 		{
+		// 			endDecision = false;
+		// 		}
+		// 	}
+		// }
+
+        if (currentWaypoint >= path.vectorPath.Count)
+        {
+            reachedEndOfPath = true;
+            return;
+        } else
+        {
+            reachedEndOfPath = false;
+        }
+
+        Vector2 direction = ((Vector2)path.vectorPath[currentWaypoint] - rb.position).normalized;
+
+        animator.SetBool("IsWaiting", false);
+		rb.velocity = new Vector2(speed, rb.velocity.y)*direction;
+		Debug.Log(rb.velocity);
+        float distance = Vector2.Distance(rb.position, path.vectorPath[currentWaypoint]);
+
+        if (distance < nextWaypointDistance)
+        {
+            currentWaypoint++;
+        }
+
+        if (rb.velocity.x>0 && !facingRight)
+        {
+            Flip();
+        } else if (rb.velocity.x<0 && facingRight)
+        {
+            Flip();
+        }
 	}
 
 	void Flip()
@@ -193,7 +290,7 @@ public class WalkingEnemy : MonoBehaviour
 
 	public void MeleeAttack()
 	{
-		transform.GetComponent<Animator>().SetBool("Attack", true);
+		animator.SetBool("Attack", true);
 		Collider2D[] collidersEnemies = Physics2D.OverlapCircleAll(attackCheck.position, 0.9f);
 		for (int i = 0; i < collidersEnemies.Length; i++)
 		{

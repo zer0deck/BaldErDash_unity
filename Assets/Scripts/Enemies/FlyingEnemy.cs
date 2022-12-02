@@ -111,6 +111,12 @@ public class FlyingEnemy : MonoBehaviour
             isFollowingPlayer = true;
             InvokeRepeating("UpdatePath", 0f, .5f);
         }
+        else if ((Mathf.Abs(distToPlayer) > FOV*2 ||  Mathf.Abs(distToPlayerY) > FOV*2) && isFollowingPlayer)
+        {
+            CancelInvoke();
+            path = null;
+            isFollowingPlayer = false;
+        }
 
         if (isHitted) return;
         if (Mathf.Abs(distToPlayer) < meleeDist && Mathf.Abs(distToPlayerY) < 2f)
