@@ -18,7 +18,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        playerPosition = new Vector3(player.transform.position.x, player.transform.position.y + 2f, transform.position.z);
+        playerPosition = new Vector3(player.transform.position.x, player.transform.position.y - 1000f, transform.position.z);
 
         if(sprite.flipX)
         {

@@ -24,11 +24,6 @@ public class DestructibleObject : MonoBehaviour
 		initialPosition = transform.position;
 	}
 
-	void Start()
-    {
-        
-    }
-
     // Update is called once per frame
     void Update()
     {

@@ -6,6 +6,7 @@ public class CameraFollow : MonoBehaviour
 {
 	public float FollowSpeed = 2f;
 	public Transform Target;
+	public CharacterController2D player;
 
 	// Transform of the camera to shake. Grabs the gameObject's transform
 	// if null.
@@ -38,6 +39,13 @@ public class CameraFollow : MonoBehaviour
 	{
 		Vector3 newPosition = Target.position;
 		newPosition.z = -10;
+		newPosition.y = newPosition.y + 2f;
+		if (player.m_FacingRight && !player.isWallSliding) {
+			newPosition.x = newPosition.x + 4f;
+		}
+		else {
+			newPosition.x = newPosition.x - 4f;
+		}
 		transform.position = Vector3.Slerp(transform.position, newPosition, FollowSpeed * Time.deltaTime);
 
 		if (shakeDuration > 0)

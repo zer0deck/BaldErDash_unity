@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -10,7 +11,7 @@ public class PlayerMovement : MonoBehaviour {
 
 	public float runSpeed = 40f;
 
-	float horizontalMove = 0f;
+	float horizontalMove = 0f, horizontalMovePCDebug = 0f;
 	bool jump = false;
 	bool dash = false;
 
@@ -20,12 +21,17 @@ public class PlayerMovement : MonoBehaviour {
 	void Update () {
 
 		horizontalMove = CrossPlatformInputManager.GetAxis("Horizontal") * runSpeed;
-
-
-		animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
+		horizontalMovePCDebug = Input.GetAxis("Horizontal") * runSpeed;
 
 		if (horizontalMove != 0) {
-			if (horizontalMove > 0) {
+			animator.SetFloat("Speed", Mathf.Abs(horizontalMove));
+		} else if (horizontalMovePCDebug !=0) {
+			animator.SetFloat("Speed", Mathf.Abs(horizontalMovePCDebug));
+		}
+		else {animator.SetFloat("Speed", Mathf.Abs(0f)); }
+
+		if (horizontalMove != 0 || horizontalMovePCDebug != 0) {
+			if (horizontalMove > 0 || horizontalMovePCDebug > 0) {
 				L_animator.SetBool("Pressed", false);
 				R_animator.SetBool("Pressed", true);
 			}
@@ -39,13 +45,13 @@ public class PlayerMovement : MonoBehaviour {
 			R_animator.SetBool("Pressed", false);
 		}
 
-		if (CrossPlatformInputManager.GetButtonDown("Jump"))
+		if (CrossPlatformInputManager.GetButtonDown("Jump") || Input.GetButtonDown("Jump"))
 		{
 			jump = true;
-			StartCoroutine(JumpCouroutine());
+			JumpCouroutine().Forget();
 		}
 
-		if (CrossPlatformInputManager.GetButtonDown("Dash"))
+		if (CrossPlatformInputManager.GetButtonDown("Dash") || Input.GetKeyDown(KeyCode.LeftShift))
 		{
 			dash = true;
 		}
@@ -79,15 +85,23 @@ public class PlayerMovement : MonoBehaviour {
 	void FixedUpdate ()
 	{
 		// Move our character
-		controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash);
+		if (horizontalMove != 0) {
+			controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash);
+		} else if (horizontalMovePCDebug !=0) {
+			controller.Move(horizontalMovePCDebug * Time.fixedDeltaTime, jump, dash);
+		}
+		else {controller.Move(0f * Time.fixedDeltaTime, jump, dash); }
+
+		// controller.Move(horizontalMove * Time.fixedDeltaTime, jump, dash);
 		jump = false;
 		dash = false;
 	}
 
-	private IEnumerator JumpCouroutine()
+
+	private async UniTask JumpCouroutine()
 	{
 		Jump_ainimator.SetBool("IsJumping", true);
-		yield return new WaitForSeconds(0.3f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.3f));
 		Jump_ainimator.SetBool("IsJumping", false);
 	}
 }

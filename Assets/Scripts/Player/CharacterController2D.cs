@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
@@ -13,12 +14,12 @@ public class CharacterController2D : MonoBehaviour
 	[SerializeField] private Transform m_GroundCheck;							// A position marking where to check if the player is grounded.
 	[SerializeField] private Transform m_WallCheck;								//Posicion que controla si el personaje toca una pared
 	[SerializeField] private Image Dash_animator; //Animators of the UI
-
+	[SerializeField] private GameObject PlayerStats;
 
 	const float k_GroundedRadius = 0.3f; // Radius of the overlap circle to determine if grounded
 	private bool m_Grounded;            // Whether or not the player is grounded.
 	private Rigidbody2D m_Rigidbody2D;
-	private bool m_FacingRight = true;  // For determining which way the player is currently facing.
+	public bool m_FacingRight = true;  // For determining which way the player is currently facing.
 	private Vector3 velocity = Vector3.zero;
 	private float limitFallSpeed = 25f; // Limit fall speed
 
@@ -30,19 +31,22 @@ public class CharacterController2D : MonoBehaviour
 	private bool canDash = true;
 	private bool isDashing = false; //If player is dashing
 	private bool m_IsWall = false; //If there is a wall in front of the player
-	private bool isWallSliding = false; //If player is sliding in a wall
+	public bool isWallSliding = false; //If player is sliding in a wall
 	private bool oldWallSlidding = false; //If player is sliding in a wall in the previous frame
 	private float prevVelocityX = 0f;
 	private bool canCheck = false; //For check if player is wallsliding
 
-	public float life = 10f; //Life of the player
+	public float MaxLife;
+	public float life; //Life of the player
 	public bool invincible = false; //If player can die
 	private bool canMove = true; //If player can move
 
 	private Animator animator;
+	private RectTransform hb, mb;
 	public ParticleSystem particleJumpUp; //Trail particles
 	public ParticleSystem particleJumpDown; //Explosion particles
 
+	private const float SHIFT = 232;
 	private float jumpWallStartX = 0;
 	private float jumpWallDistX = 0; //Distance between player and wall
 	private bool limitVelOnWallJump = false; //For limit wall jump distance with low fps
@@ -66,8 +70,14 @@ public class CharacterController2D : MonoBehaviour
 
 		if (OnLandEvent == null)
 			OnLandEvent = new UnityEvent();
+		
+		hb = PlayerStats.GetComponent<RectTransform>();
 	}
 
+	private void Start() {
+		MaxLife = DataSaver.instance.state.MaxLife;
+		life = MaxLife;
+	}
 
 	private void FixedUpdate()
 	{
@@ -143,8 +153,8 @@ public class CharacterController2D : MonoBehaviour
 			if (dash && canDash && !isWallSliding)
 			{
 				//m_Rigidbody2D.AddForce(new Vector2(transform.localScale.x * m_DashForce, 0f));
-				StartCoroutine(DashCooldown(dashCooldown));
-				StartCoroutine(DashAnimation(dashCooldown));
+				DashCooldown(dashCooldown).Forget();
+				DashAnimation(dashCooldown).Forget();
 			}
 			// If crouching, check to see if the character can stand up
 			if (isDashing)
@@ -207,7 +217,7 @@ public class CharacterController2D : MonoBehaviour
 					isWallSliding = true;
 					m_WallCheck.localPosition = new Vector3(-m_WallCheck.localPosition.x, m_WallCheck.localPosition.y, 0);
 					Flip();
-					StartCoroutine(WaitToCheck(0.1f));
+					WaitToCheck(0.1f).Forget();
 					canDoubleJump = true;
 					animator.SetBool("IsWallSliding", true);
 				}
@@ -217,7 +227,7 @@ public class CharacterController2D : MonoBehaviour
 				{
 					if (move * transform.localScale.x > 0.1f)
 					{
-						StartCoroutine(WaitToEndSliding());
+						WaitToEndSliding().Forget();
 					}
 					else 
 					{
@@ -248,8 +258,8 @@ public class CharacterController2D : MonoBehaviour
 					oldWallSlidding = false;
 					m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
 					canDoubleJump = true;
-					StartCoroutine(DashCooldown(dashCooldown));
-					StartCoroutine(DashAnimation(dashCooldown));
+					DashCooldown(dashCooldown).Forget();
+					DashAnimation(dashCooldown).Forget();
 				}
 			}
 			else if (isWallSliding && !m_IsWall && canCheck) 
@@ -266,6 +276,7 @@ public class CharacterController2D : MonoBehaviour
 
 	private void Flip()
 	{
+		// HealthSystem.instance.SetValue(0.5f*life/MaxLife);
 		// Switch the way the player is labelled as facing.
 		m_FacingRight = !m_FacingRight;
 
@@ -281,71 +292,82 @@ public class CharacterController2D : MonoBehaviour
 		{
 			animator.SetBool("Hit", true);
 			life -= damage;
+			// hb.offsetMax = new Vector2( - ( SHIFT * (life/MaxLife) ), hb.offsetMax [1] );
 			Vector2 damageDir = Vector3.Normalize(transform.position - position) * 40f ;
 			m_Rigidbody2D.velocity = Vector2.zero;
 			m_Rigidbody2D.AddForce(damageDir * 10);
+			HealthSystem.instance.SetValue(life/MaxLife);
 			if (life <= 0)
 			{
-				StartCoroutine(WaitToDead());
+				WaitToDead().Forget();
 			}
 			else
 			{
-				StartCoroutine(Stun(0.25f));
-				StartCoroutine(MakeInvincible(1f));
+				Stun(0.25f).Forget();
+				MakeInvincible(1f).Forget();
 			}
 		}
 	}
 
-	IEnumerator DashCooldown(float time)
+	public void ApplyHeal(float heal)
+	{
+		// animator.SetBool("Heal", true);
+		life += heal;
+		if (life>MaxLife) life=MaxLife;
+		// Debug.Log($"Life: {life}, MaxLife: {MaxLife}");
+		HealthSystem.instance.SetValue(life/MaxLife);
+	}
+
+	private async UniTask DashCooldown(float time)
 	{
 		animator.SetBool("IsDashing", true);
 		isDashing = true;
 		canDash = false;
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		isDashing = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canDash = true;
 	}
 
-	IEnumerator DashAnimation(float time) {
+	private async UniTask DashAnimation(float time) {
 		float fulltime = time;
 		while (time > 0) {
 			Dash_animator.fillAmount = 1 - time/fulltime;
 			time -= 0.01f;
-			yield return new WaitForSeconds(0.01f);
+			await UniTask.Delay(System.TimeSpan.FromSeconds(0.01f));
 		}
 		Dash_animator.fillAmount = 1;
 	}
 
-	IEnumerator Stun(float time) 
+	private async UniTask Stun(float time) 
 	{
 		canMove = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canMove = true;
 	}
-	IEnumerator MakeInvincible(float time) 
+	private async UniTask MakeInvincible(float time) 
 	{
 		invincible = true;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		invincible = false;
 	}
-	IEnumerator WaitToMove(float time)
+	private async UniTask WaitToMove(float time)
 	{
 		canMove = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canMove = true;
 	}
 
-	IEnumerator WaitToCheck(float time)
+	private async UniTask WaitToCheck(float time)
 	{
 		canCheck = false;
-		yield return new WaitForSeconds(time);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(time));
 		canCheck = true;
 	}
 
-	IEnumerator WaitToEndSliding()
+	private async UniTask WaitToEndSliding()
 	{
-		yield return new WaitForSeconds(0.1f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.1f));
 		canDoubleJump = true;
 		isWallSliding = false;
 		animator.SetBool("IsWallSliding", false);
@@ -353,16 +375,16 @@ public class CharacterController2D : MonoBehaviour
 		m_WallCheck.localPosition = new Vector3(Mathf.Abs(m_WallCheck.localPosition.x), m_WallCheck.localPosition.y, 0);
 	}
 
-	IEnumerator WaitToDead()
+	private async UniTask WaitToDead()
 	{
 		animator.SetBool("IsDead", true);
 		canMove = false;
 		invincible = true;
 		GetComponent<Attack>().enabled = false;
-		yield return new WaitForSeconds(0.4f);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(0.4f));
 		m_Rigidbody2D.velocity = new Vector2(0, m_Rigidbody2D.velocity.y);
-		yield return new WaitForSeconds(1.1f);
-		SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
+		await UniTask.Delay(System.TimeSpan.FromSeconds(1.1f));
+		await SceneManager.LoadSceneAsync(SceneManager.GetActiveScene().buildIndex);
 	}
 
 #if UNITY_EDITOR

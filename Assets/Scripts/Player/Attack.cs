@@ -16,23 +16,25 @@ public class Attack : MonoBehaviour
 	public bool canAttack = true;
 	public bool isTimeToCheck = false;
 
+	public float Mana , MaxMana;
+
 	public GameObject cam;
 
 	private void Awake()
 	{
 		m_Rigidbody2D = GetComponent<Rigidbody2D>();
+
 	}
 
-	// Start is called before the first frame update
-	void Start()
-    {
-        
-    }
-
+	private void Start() {
+		MaxMana = DataSaver.instance.state.MaxMana;
+		Mana = MaxMana;
+	}
+	
     // Update is called once per frame
     void Update()
     {
-		if (CrossPlatformInputManager.GetButtonDown("Attack") && canAttack)
+		if ((CrossPlatformInputManager.GetButtonDown("Attack") || Input.GetMouseButtonDown(0)) && canAttack)
 		{
 			canAttack = false;
 			animator.SetBool("IsAttacking", true);
@@ -40,7 +42,7 @@ public class Attack : MonoBehaviour
 			StartCoroutine(AttackAnimation(attackCooldown));
 		}
 
-		if (CrossPlatformInputManager.GetButtonDown("Shoot"))
+		if (CrossPlatformInputManager.GetButtonDown("Shoot") || Input.GetMouseButtonDown(1))
 		{
 			GameObject throwableWeapon = Instantiate(throwableObject, transform.position + new Vector3(transform.localScale.x * 0.5f,-0.2f), Quaternion.identity) as GameObject; 
 			Vector2 direction = new Vector2(transform.localScale.x, 0);
@@ -81,4 +83,10 @@ public class Attack : MonoBehaviour
 			}
 		}
 	}
+	#if UNITY_EDITOR
+	private void OnDrawGizmos() 
+	{
+			Gizmos.DrawSphere(attackCheck.position, 0.9f);
+	}
+	#endif // UNITY_EDITOR
 }
